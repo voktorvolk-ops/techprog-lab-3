@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Таймер интервальной тренировки</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #1f2937;
+      background: #f3f5f9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header, footer {
+      padding: 1.25rem;
+      text-align: center;
+      color: #667085;
+    }
+
+    header { font-weight: 700; color: #273449; }
+
+    main {
+      flex: 1;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+    }
+
+    .card {
+      width: min(100%, 440px);
+      padding: clamp(1.5rem, 6vw, 2.5rem);
+      background: #fff;
+      border: 1px solid #e8ecf2;
+      border-radius: 24px;
+      box-shadow: 0 18px 50px #24324712;
+    }
+
+    h1 {
+      margin: 0 0 .5rem;
+      font-size: clamp(1.5rem, 5vw, 2rem);
+      text-align: center;
+    }
+
+    .subtitle {
+      margin: 0 0 1.75rem;
+      text-align: center;
+      color: #667085;
+      line-height: 1.5;
+    }
+
+    .fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: .45rem;
+      font-size: .9rem;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      min-height: 48px;
+      padding: .7rem .85rem;
+      border: 1px solid #d8dee8;
+      border-radius: 12px;
+      font: inherit;
+    }
+
+    input:focus {
+      outline: 3px solid #5965e533;
+      border-color: #5965e5;
+    }
+
+    .timer {
+      margin: 1.75rem 0 .4rem;
+      text-align: center;
+      font-size: clamp(3rem, 15vw, 5rem);
+      font-variant-numeric: tabular-nums;
+      font-weight: 750;
+      letter-spacing: -.06em;
+    }
+
+    .phase {
+      min-height: 1.5em;
+      text-align: center;
+      color: #667085;
+      font-weight: 600;
+    }
+
+    .error {
+      min-height: 1.5em;
+      margin: .8rem 0;
+      color: #c0392b;
+      font-size: .9rem;
+    }
+
+    .buttons {
+      display: flex;
+      gap: .75rem;
+    }
+
+    button {
+      flex: 1;
+      min-height: 48px;
+      border: 0;
+      border-radius: 12px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:focus-visible {
+      outline: 3px solid #5965e588;
+      outline-offset: 2px;
+    }
+
+    .start { background: #5965e5; color: #fff; }
+    .start:hover { background: #4853cc; }
+    .reset { background: #eef0f5; color: #344054; }
+    .reset:hover { background: #e2e6ee; }
+
+    @media (max-width: 380px) {
+      .fields { grid-template-columns: 1fr; gap: .75rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>Тренировки просто</header>
+
+  <main>
+    <section class="card" aria-labelledby="page-title">
+      <h1 id="page-title">Интервальный таймер</h1>
+      <p class="subtitle">Настройте длительность работы и отдыха, затем запустите тренировку.</p>
+
+      <form id="timer-form" novalidate>
+        <div class="fields">
+          <div>
+            <label for="work">Работа (сек.)</label>
+            <input id="work" name="work" type="number" min="1" step="1" value="30" inputmode="numeric">
+          </div>
+          <div>
+            <label for="rest">Отдых (сек.)</label>
+            <input id="rest" name="rest" type="number" min="1" step="1" value="15" inputmode="numeric">
+          </div>
+        </div>
+
+        <div class="timer" id="display" role="timer" aria-live="off">00:30</div>
+        <div class="phase" id="phase" aria-live="polite">Готовы начать?</div>
+        <p class="error" id="error" role="alert"></p>
+
+        <div class="buttons">
+          <button class="start" type="submit" id="start">Старт</button>
+          <button class="reset" type="button" id="reset">Сбросить</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer>Удачной тренировки!</footer>
+
+  <script>
+    const form = document.querySelector("#timer-form");
+    const workInput = document.querySelector("#work");
+    const restInput = document.querySelector("#rest");
+    const display = document.querySelector("#display");
+    const phaseLabel = document.querySelector("#phase");
+    const error = document.querySelector("#error");
+    const startButton = document.querySelector("#start");
+    const resetButton = document.querySelector("#reset");
+
+    let intervalId = null;
+    let remaining = 30;
+    let phase = "work";
+    let running = false;
+
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+
+    function showTime() {
+      display.textContent = formatTime(remaining);
+    }
+
+    function readDuration(input, label) {
+      const raw = input.value.trim();
+      const value = Number(raw);
+
+      if (raw === "" || !Number.isFinite(value) || !Number.isInteger(value) || value <= 0) {
+        throw new Error(`Введите целое положительное число секунд для поля «${label}».`);
+      }
+      return value;
+    }
+
+    function stopTimer() {
+      clearInterval(intervalId);
+      intervalId = null;
+      running = false;
+      startButton.textContent = "Старт";
+    }
+
+    function tick() {
+      remaining -= 1;
+
+      if (remaining <= 0) {
+        if (phase === "work") {
+          phase = "rest";
+          remaining = readDuration(restInput, "Отдых");
+          phaseLabel.textContent = "Отдых";
+        } else {
+          phase = "work";
+          remaining = readDuration(workInput, "Работа");
+          phaseLabel.textContent = "Работа";
+        }
+      }
+
+      showTime();
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      error.textContent = "";
+
+      if (running) {
+        stopTimer();
+        phaseLabel.textContent = "Таймер на паузе";
+        return;
+      }
+
+      try {
+        const work = readDuration(workInput, "Работа");
+        readDuration(restInput, "Отдых");
+
+        if (remaining <= 0 || phase === "work") remaining = work;
+        showTime();
+        phaseLabel.textContent = phase === "work" ? "Работа" : "Отдых";
+        running = true;
+        startButton.textContent = "Пауза";
+        intervalId = setInterval(() => {
+          try {
+            tick();
+          } catch (exception) {
+            stopTimer();
+            error.textContent = exception.message;
+          }
+        }, 1000);
+      } catch (exception) {
+        error.textContent = exception.message;
+      }
+    });
+
+    resetButton.addEventListener("click", () => {
+      stopTimer();
+      phase = "work";
+      error.textContent = "";
+      phaseLabel.textContent = "Готовы начать?";
+
+      try {
+        remaining = readDuration(workInput, "Работа");
+      } catch {
+        remaining = 0;
+      }
+      showTime();
+    });
+
+    workInput.addEventListener("input", () => {
+      if (!running && phase === "work") {
+        const value = Number(workInput.value);
+        remaining = workInput.value.trim() && Number.isInteger(value) && value > 0 ? value : 0;
+        showTime();
+      }
+    });
+  </script>
+</body>
+</html>
