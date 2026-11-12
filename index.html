@@ -129,9 +129,9 @@
     }
 
     .start { background: #5965e5; color: #fff; }
-    .start:hover { background: #4853cc; }
+    .start:hover { background: #47cc85; }
     .reset { background: #eef0f5; color: #344054; }
-    .reset:hover { background: #e2e6ee; }
+    .reset:hover { background: #fc1808; }
 
     @media (max-width: 380px) {
       .fields { grid-template-columns: 1fr; gap: .75rem; }
@@ -150,15 +150,15 @@
         <div class="fields">
           <div>
             <label for="work">Работа (сек.)</label>
-            <input id="work" name="work" type="number" min="1" step="1" value="30" inputmode="numeric">
+            <input id="work" name="work" type="number" min="1" step="1" value="90" inputmode="numeric">
           </div>
           <div>
             <label for="rest">Отдых (сек.)</label>
-            <input id="rest" name="rest" type="number" min="1" step="1" value="15" inputmode="numeric">
+            <input id="rest" name="rest" type="number" min="1" step="1" value="30" inputmode="numeric">
           </div>
         </div>
 
-        <div class="timer" id="display" role="timer" aria-live="off">00:30</div>
+        <div class="timer" id="display" role="timer" aria-live="off">01:30</div>
         <div class="phase" id="phase" aria-live="polite">Готовы начать?</div>
         <p class="error" id="error" role="alert"></p>
 
