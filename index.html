@@ -6,7 +6,6 @@
   <title>Таймер интервальной тренировки</title>
   <style>
     :root {
-      color-scheme: light;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: #1f2937;
       background: #f3f5f9;
@@ -27,7 +26,10 @@
       color: #667085;
     }
 
-    header { font-weight: 700; color: #273449; }
+    header {
+      color: #273449;
+      font-weight: 700;
+    }
 
     main {
       flex: 1;
@@ -53,9 +55,9 @@
 
     .subtitle {
       margin: 0 0 1.75rem;
-      text-align: center;
       color: #667085;
       line-height: 1.5;
+      text-align: center;
     }
 
     .fields {
@@ -92,13 +94,18 @@
       font-variant-numeric: tabular-nums;
       font-weight: 750;
       letter-spacing: -.06em;
+      transition: color .2s ease;
+    }
+
+    .timer.warning {
+      color: #dc2626;
     }
 
     .phase {
       min-height: 1.5em;
-      text-align: center;
       color: #667085;
       font-weight: 600;
+      text-align: center;
     }
 
     .error {
@@ -128,13 +135,22 @@
       outline-offset: 2px;
     }
 
-    .start { background: #5965e5; color: #fff; }
-    .start:hover { background: #47cc85; }
-    .reset { background: #eef0f5; color: #344054; }
-    .reset:hover { background: #fc1808; }
+    .start {
+      color: #fff;
+      background: #5965e5;
+    }
+
+    .start:hover { background: #4853cc; }
+
+    .reset {
+      color: #344054;
+      background: #eef0f5;
+    }
+
+    .reset:hover { background: #e2e6ee; }
 
     @media (max-width: 380px) {
-      .fields { grid-template-columns: 1fr; gap: .75rem; }
+      .fields { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -150,15 +166,15 @@
         <div class="fields">
           <div>
             <label for="work">Работа (сек.)</label>
-            <input id="work" name="work" type="number" min="1" step="1" value="90" inputmode="numeric">
+            <input id="work" name="work" type="number" min="1" step="1" value="30" inputmode="numeric">
           </div>
           <div>
             <label for="rest">Отдых (сек.)</label>
-            <input id="rest" name="rest" type="number" min="1" step="1" value="30" inputmode="numeric">
+            <input id="rest" name="rest" type="number" min="1" step="1" value="15" inputmode="numeric">
           </div>
         </div>
 
-        <div class="timer" id="display" role="timer" aria-live="off">01:30</div>
+        <div class="timer" id="display" role="timer" aria-live="off">00:30</div>
         <div class="phase" id="phase" aria-live="polite">Готовы начать?</div>
         <p class="error" id="error" role="alert"></p>
 
@@ -195,6 +211,7 @@
 
     function showTime() {
       display.textContent = formatTime(remaining);
+      display.classList.toggle("warning", remaining <= 10);
     }
 
     function readDuration(input, label) {
@@ -204,6 +221,7 @@
       if (raw === "" || !Number.isFinite(value) || !Number.isInteger(value) || value <= 0) {
         throw new Error(`Введите целое положительное число секунд для поля «${label}».`);
       }
+
       return value;
     }
 
@@ -246,11 +264,15 @@
         const work = readDuration(workInput, "Работа");
         readDuration(restInput, "Отдых");
 
-        if (remaining <= 0 || phase === "work") remaining = work;
+        if (remaining <= 0 || phase === "work") {
+          remaining = work;
+        }
+
         showTime();
         phaseLabel.textContent = phase === "work" ? "Работа" : "Отдых";
         running = true;
         startButton.textContent = "Пауза";
+
         intervalId = setInterval(() => {
           try {
             tick();
@@ -275,13 +297,15 @@
       } catch {
         remaining = 0;
       }
+
       showTime();
     });
 
     workInput.addEventListener("input", () => {
       if (!running && phase === "work") {
-        const value = Number(workInput.value);
-        remaining = workInput.value.trim() && Number.isInteger(value) && value > 0 ? value : 0;
+        const raw = workInput.value.trim();
+        const value = Number(raw);
+        remaining = raw && Number.isInteger(value) && value > 0 ? value : 0;
         showTime();
       }
     });
